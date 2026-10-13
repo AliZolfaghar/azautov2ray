@@ -4,6 +4,7 @@ set -euo pipefail
 
 ETC_DIR="/etc/azautov2ray"
 OPT_DIR="/opt/azautov2ray"
+VENV_DIR="${OPT_DIR}/venv"
 CONFIG_FILE="${ETC_DIR}/config.yaml"
 
 RED='\033[0;31m'
@@ -49,26 +50,55 @@ resolve_repo_root() {
 }
 
 ensure_python() {
-  if command -v python3 >/dev/null 2>&1; then
-    return
-  fi
-  info "Installing python3 ..."
+  info "Ensuring python3 + venv tooling ..."
   if command -v apt-get >/dev/null 2>&1; then
-    apt-get update -y
-    apt-get install -y python3 python3-venv python3-pip curl ca-certificates unzip
+    apt-get update -y >/dev/null
+    DEBIAN_FRONTEND=noninteractive apt-get install -y \
+      python3 python3-venv python3-pip curl ca-certificates unzip >/dev/null
   elif command -v dnf >/dev/null 2>&1; then
-    dnf install -y python3 python3-pip curl ca-certificates unzip
+    dnf install -y python3 python3-pip curl ca-certificates unzip >/dev/null
   elif command -v yum >/dev/null 2>&1; then
-    yum install -y python3 python3-pip curl ca-certificates unzip
-  else
-    err "python3 not found and no supported package manager available."
+    yum install -y python3 python3-pip curl ca-certificates unzip >/dev/null
+  elif command -v pacman >/dev/null 2>&1; then
+    pacman -Sy --noconfirm python python-pip curl ca-certificates unzip >/dev/null
+  elif command -v apk >/dev/null 2>&1; then
+    apk add --no-cache python3 py3-pip curl ca-certificates unzip >/dev/null
+  fi
+
+  if ! command -v python3 >/dev/null 2>&1; then
+    err "python3 not found and could not be installed."
+    exit 1
+  fi
+
+  # Verify venv module works (needed on Debian/Ubuntu PEP 668)
+  if ! python3 -c "import venv" 2>/dev/null; then
+    err "python3-venv is missing. On Debian/Ubuntu: apt install python3-venv"
     exit 1
   fi
 }
 
+ensure_venv() {
+  mkdir -p "${OPT_DIR}"
+  if [[ ! -x "${VENV_DIR}/bin/python" ]]; then
+    info "Creating virtualenv at ${VENV_DIR} ..."
+    python3 -m venv "${VENV_DIR}"
+  fi
+  info "Installing Python dependencies into venv (not system-wide) ..."
+  "${VENV_DIR}/bin/pip" install --upgrade pip >/dev/null
+  if [[ -f "${REPO_ROOT}/requirements.txt" ]]; then
+    "${VENV_DIR}/bin/pip" install -r "${REPO_ROOT}/requirements.txt"
+  else
+    "${VENV_DIR}/bin/pip" install "PyYAML>=6.0.1" "requests>=2.31.0" "qrcode[pil]>=7.4.2" "Pillow>=10.0.0"
+  fi
+  ok "venv ready"
+}
+
 is_installed() {
   [[ -f "${CONFIG_FILE}" ]] || return 1
-  python3 - <<'PY'
+  # Prefer venv python if present; fall back to system python3
+  local py="python3"
+  [[ -x "${VENV_DIR}/bin/python" ]] && py="${VENV_DIR}/bin/python"
+  PYTHONPATH="${OPT_DIR}:${REPO_ROOT:-}" "${py}" - <<'PY'
 from pathlib import Path
 import sys
 sys.path.insert(0, "/opt/azautov2ray")
@@ -76,7 +106,6 @@ try:
     from azautov2ray.config import is_installed
     sys.exit(0 if is_installed() else 1)
 except Exception:
-    # Fallback: config exists with generated uuid key
     text = Path("/etc/azautov2ray/config.yaml").read_text(encoding="utf-8", errors="ignore")
     sys.exit(0 if "reality_private_key:" in text and "uuid:" in text else 1)
 PY
@@ -90,24 +119,17 @@ attach_tty() {
 }
 
 run_python_cli() {
-  local py
-  if [[ -x "${OPT_DIR}/venv/bin/python" ]]; then
-    py="${OPT_DIR}/venv/bin/python"
-    export PYTHONPATH="${OPT_DIR}${PYTHONPATH:+:$PYTHONPATH}"
-  else
-    ensure_python
-    py="python3"
-    export PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:$PYTHONPATH}"
-  fi
+  export PYTHONPATH="${OPT_DIR}:${REPO_ROOT}${PYTHONPATH:+:$PYTHONPATH}"
   cd "${REPO_ROOT}"
   attach_tty
-  exec "${py}" -m azautov2ray.cli "$@"
+  exec "${VENV_DIR}/bin/python" -m azautov2ray.cli "$@"
 }
 
 main() {
   need_root
   resolve_repo_root
   ensure_python
+  ensure_venv
   attach_tty
 
   echo
@@ -122,14 +144,10 @@ main() {
     run_python_cli menu "$@"
   else
     info "Not installed yet — starting setup wizard ..."
-    # First run: use repo checkout so package is importable
-    export PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:$PYTHONPATH}"
-    # Minimal deps for wizard bootstrap (full venv created inside wizard)
-    python3 -m pip install --user -q PyYAML requests 'qrcode[pil]' Pillow 2>/dev/null || \
-      python3 -m pip install -q PyYAML requests 'qrcode[pil]' Pillow || true
+    export PYTHONPATH="${REPO_ROOT}:${OPT_DIR}${PYTHONPATH:+:$PYTHONPATH}"
     cd "${REPO_ROOT}"
     attach_tty
-    exec python3 -m azautov2ray.cli "$@"
+    exec "${VENV_DIR}/bin/python" -m azautov2ray.cli "$@"
   fi
 }
 
