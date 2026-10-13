@@ -172,7 +172,7 @@ def real_delay_filter(
     url: str,
     max_ms: int,
     xray_bin: str = XRAY_BIN,
-    concurrency: int = 50,
+    concurrency: int = 10,
 ) -> list[dict[str, Any]]:
     workers = max(1, min(int(concurrency), len(nodes) or 1))
     print(
@@ -253,7 +253,7 @@ def run_full_pipeline(cfg: dict[str, Any], nodes: list[dict[str, Any]], xray_bin
         url=t.get("real_delay_url") or "https://www.google.com/generate_204",
         max_ms=int(t.get("real_delay_max_ms", 2000)),
         xray_bin=xray_bin,
-        concurrency=int(t.get("real_delay_concurrency", 50)),
+        concurrency=int(t.get("real_delay_concurrency", 10)),
     )
     if not delayed:
         return []

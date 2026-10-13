@@ -34,7 +34,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "max_candidates_for_speed": 10,
         "concurrency": 20,
         # Parallel Xray instances for real-delay stage
-        "real_delay_concurrency": 50,
+        "real_delay_concurrency": 10,
         # Only test/use subscription nodes on these ports (others discarded)
         "only_ports": [443],
         # Only Reality configs (security=reality + pbk)

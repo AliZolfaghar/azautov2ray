@@ -20,7 +20,7 @@ testing:
   speed_timeout_s: 15
   max_candidates_for_speed: 10
   concurrency: 20
-  real_delay_concurrency: 50
+  real_delay_concurrency: 10
   only_ports: [443]
   only_reality: true
 
