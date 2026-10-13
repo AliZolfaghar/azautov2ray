@@ -82,6 +82,13 @@ except Exception:
 PY
 }
 
+attach_tty() {
+  # When launched via `curl | bash`, stdin is the script pipe — reconnect to the real terminal.
+  if [[ ! -t 0 ]] && [[ -r /dev/tty ]]; then
+    exec </dev/tty
+  fi
+}
+
 run_python_cli() {
   local py
   if [[ -x "${OPT_DIR}/venv/bin/python" ]]; then
@@ -93,6 +100,7 @@ run_python_cli() {
     export PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:$PYTHONPATH}"
   fi
   cd "${REPO_ROOT}"
+  attach_tty
   exec "${py}" -m azautov2ray.cli "$@"
 }
 
@@ -100,6 +108,7 @@ main() {
   need_root
   resolve_repo_root
   ensure_python
+  attach_tty
 
   echo
   echo "=============================================="
@@ -119,6 +128,7 @@ main() {
     python3 -m pip install --user -q PyYAML requests 'qrcode[pil]' Pillow 2>/dev/null || \
       python3 -m pip install -q PyYAML requests 'qrcode[pil]' Pillow || true
     cd "${REPO_ROOT}"
+    attach_tty
     exec python3 -m azautov2ray.cli "$@"
   fi
 }

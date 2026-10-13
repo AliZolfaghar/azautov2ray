@@ -10,6 +10,7 @@ from pathlib import Path
 from azautov2ray import ETC_DIR, OPT_DIR
 from azautov2ray.bootstrap import close_firewall_port, remove_cli_wrapper
 from azautov2ray.config import is_installed, load_config, save_config
+from azautov2ray.prompt import ask, pause, read_line
 from azautov2ray.reality import build_vless_link, print_qr
 from azautov2ray.service import (
     restart_services,
@@ -25,7 +26,7 @@ from azautov2ray.xray_gen import build_server_config, write_xray_json
 
 
 def _pause() -> None:
-    input("\nPress Enter to continue...")
+    pause()
 
 
 def show_status() -> None:
@@ -104,28 +105,24 @@ def edit_settings() -> None:
     server = cfg.setdefault("server", {})
     obs = cfg.setdefault("observer", {})
 
-    def ask(label: str, current: str) -> str:
-        raw = input(f"  {label} [{current}]: ").strip()
-        return raw if raw else current
-
-    server["domain"] = ask("Domain", str(server.get("domain") or ""))
-    server["public_ip"] = ask("Public IP", str(server.get("public_ip") or ""))
-    port_s = ask("Reality port", str(server.get("reality_port") or 443))
+    server["domain"] = ask("  Domain", str(server.get("domain") or ""))
+    server["public_ip"] = ask("  Public IP", str(server.get("public_ip") or ""))
+    port_s = ask("  Reality port", str(server.get("reality_port") or 443))
     try:
         server["reality_port"] = int(port_s)
     except ValueError:
         print("  Invalid port — unchanged.")
-    server["reality_dest"] = ask("Reality dest", str(server.get("reality_dest") or ""))
+    server["reality_dest"] = ask("  Reality dest", str(server.get("reality_dest") or ""))
     sni = server["reality_dest"].split(":")[0]
     server["reality_server_names"] = [sni]
 
     print("  Subscriptions (comma-separated):")
     current_subs = ",".join(cfg.get("subscriptions") or [])
-    new_subs = ask("URLs", current_subs)
+    new_subs = ask("  URLs", current_subs)
     cfg["subscriptions"] = [s.strip() for s in new_subs.split(",") if s.strip()]
 
-    interval_s = ask("Observer interval_s", str(obs.get("interval_s") or 60))
-    fail_s = ask("Fail threshold", str(obs.get("fail_threshold") or 3))
+    interval_s = ask("  Observer interval_s", str(obs.get("interval_s") or 60))
+    fail_s = ask("  Fail threshold", str(obs.get("fail_threshold") or 3))
     try:
         obs["interval_s"] = int(interval_s)
         obs["fail_threshold"] = int(fail_s)
@@ -148,7 +145,7 @@ def do_restart() -> None:
 
 def do_uninstall() -> None:
     print()
-    confirm = input("  Type UNINSTALL to remove azautov2ray completely: ").strip()
+    confirm = read_line("  Type UNINSTALL to remove azautov2ray completely: ").strip()
     if confirm != "UNINSTALL":
         print("  Cancelled.")
         return
@@ -160,7 +157,7 @@ def do_uninstall() -> None:
     except Exception as exc:
         print(f"  (systemd cleanup warning: {exc})")
         stop_services()
-    if port and input(f"  Close firewall port {port}? [y/N]: ").strip().lower() in ("y", "yes"):
+    if port and read_line(f"  Close firewall port {port}? [y/N]: ").strip().lower() in ("y", "yes"):
         close_firewall_port(port)
     remove_cli_wrapper()
     for path in (OPT_DIR, ETC_DIR):
@@ -184,7 +181,7 @@ def management_menu(repo_root: str) -> None:
         print("  5) Restart services")
         print("  6) Uninstall")
         print("  0) Exit")
-        choice = input("  Select: ").strip()
+        choice = read_line("  Select: ").strip()
         try:
             if choice == "1":
                 show_status()

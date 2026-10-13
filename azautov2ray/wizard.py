@@ -17,6 +17,7 @@ from azautov2ray.bootstrap import (
     open_firewall_port,
 )
 from azautov2ray.config import DEFAULT_CONFIG, ensure_etc_dirs, save_config
+from azautov2ray.prompt import ask, ask_int, ask_multiline, ask_yes_no
 from azautov2ray.reality import (
     build_vless_link,
     generate_reality_keys,
@@ -29,46 +30,6 @@ from azautov2ray.state import save_state
 from azautov2ray.sub_fetcher import fetch_all, parse_uris
 from azautov2ray.tester import dump_ranked, node_summary, run_full_pipeline
 from azautov2ray.xray_gen import build_server_config, write_xray_json
-
-
-def _ask(prompt: str, default: str | None = None) -> str:
-    if default is not None and default != "":
-        raw = input(f"{prompt} [{default}]: ").strip()
-        return raw if raw else default
-    while True:
-        raw = input(f"{prompt}: ").strip()
-        if raw:
-            return raw
-        print("  Value required.")
-
-
-def _ask_yes_no(prompt: str, default: bool = True) -> bool:
-    hint = "Y/n" if default else "y/N"
-    raw = input(f"{prompt} [{hint}]: ").strip().lower()
-    if not raw:
-        return default
-    return raw in ("y", "yes", "1", "true")
-
-
-def _ask_int(prompt: str, default: int) -> int:
-    while True:
-        raw = _ask(prompt, str(default))
-        try:
-            return int(raw)
-        except ValueError:
-            print("  Enter a number.")
-
-
-def _ask_multiline(prompt: str) -> list[str]:
-    print(prompt)
-    print("  (enter one URL per line; empty line to finish)")
-    lines: list[str] = []
-    while True:
-        line = input("  > ").strip()
-        if not line:
-            break
-        lines.append(line)
-    return lines
 
 
 def detect_public_ip() -> str:
@@ -101,19 +62,19 @@ def run_wizard(repo_root: str) -> None:
     print("=" * 60)
     print()
 
-    domain = _ask("Domain (pointed to this VPS)")
+    domain = ask("Domain (pointed to this VPS)")
     detected_ip = detect_public_ip()
-    public_ip = _ask("Public IP", detected_ip or "")
-    reality_port = _ask_int("Reality listen port", 443)
-    dest = _ask("Reality dest (host:port)", "www.microsoft.com:443")
+    public_ip = ask("Public IP", detected_ip or "")
+    reality_port = ask_int("Reality listen port", 443)
+    dest = ask("Reality dest (host:port)", "www.microsoft.com:443")
     sni = dest.split(":")[0]
-    subs = _ask_multiline("Subscription URL(s)")
+    subs = ask_multiline("Subscription URL(s)")
     if not subs:
         print("  At least one subscription URL is required.")
         return
-    interval = _ask_int("Observer interval (seconds)", 60)
-    fail_threshold = _ask_int("Fail threshold before switch", 3)
-    open_fw = _ask_yes_no("Open firewall port automatically?", True)
+    interval = ask_int("Observer interval (seconds)", 60)
+    fail_threshold = ask_int("Fail threshold before switch", 3)
+    open_fw = ask_yes_no("Open firewall port automatically?", True)
 
     print()
     print("--- Installing dependencies ---")

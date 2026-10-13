@@ -10,6 +10,12 @@ Fetches your subscription configs, tests them (TCP → real delay → download s
 curl -fsSL https://raw.githubusercontent.com/AliZolfaghar/azautov2ray/main/install.sh | sudo bash
 ```
 
+Interactive prompts work with the pipe above (reads from `/dev/tty`). Alternatives:
+
+```bash
+sudo bash <(curl -fsSL https://raw.githubusercontent.com/AliZolfaghar/azautov2ray/main/install.sh)
+```
+
 Or after cloning:
 
 ```bash
