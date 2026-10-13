@@ -95,7 +95,8 @@ testing:
   speed_url: "https://speed.cloudflare.com/__down?bytes=10000000"
   speed_timeout_s: 15
   max_candidates_for_speed: 10
-  only_ports: [443]   # non-443 subscription nodes are discarded before testing
+  only_ports: [443]      # non-443 nodes discarded before testing
+  only_reality: true     # only Reality (security=reality + pbk) kept
 
 observer:
   interval_s: 60

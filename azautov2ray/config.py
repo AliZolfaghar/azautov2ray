@@ -35,6 +35,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "concurrency": 20,
         # Only test/use subscription nodes on these ports (others discarded)
         "only_ports": [443],
+        # Only Reality configs (security=reality + pbk)
+        "only_reality": True,
     },
     "observer": {
         "interval_s": 60,

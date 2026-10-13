@@ -21,6 +21,7 @@ testing:
   max_candidates_for_speed: 10
   concurrency: 20
   only_ports: [443]
+  only_reality: true
 
 observer:
   interval_s: 60

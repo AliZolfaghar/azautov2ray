@@ -34,9 +34,11 @@ def apply_selected(cfg: dict, node: dict | None) -> None:
 def rescan(cfg: dict) -> list[dict]:
     print("[observer] full rescan of subscriptions...")
     uris = fetch_all(cfg.get("subscriptions") or [])
-    only_ports = set(int(p) for p in (cfg.get("testing") or {}).get("only_ports") or [443])
-    nodes = parse_uris(uris, only_ports=only_ports)
-    print(f"[observer] nodes to test (port {sorted(only_ports)}): {len(nodes)}")
+    tcfg = cfg.get("testing") or {}
+    only_ports = set(int(p) for p in tcfg.get("only_ports") or [443])
+    only_reality = bool(tcfg.get("only_reality", True))
+    nodes = parse_uris(uris, only_ports=only_ports, only_reality=only_reality)
+    print(f"[observer] nodes to test: {len(nodes)}")
     ranked = run_full_pipeline(cfg, nodes, xray_bin=XRAY_BIN)
     return ranked
 

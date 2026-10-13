@@ -237,16 +237,26 @@ def parse_uri(uri: str) -> dict[str, Any] | None:
     return None
 
 
+def is_reality_node(node: dict[str, Any]) -> bool:
+    """True if node looks like a Reality config (security=reality + public key)."""
+    security = str(node.get("security") or node.get("tls") or "").lower()
+    if security != "reality":
+        return False
+    return bool(str(node.get("pbk") or "").strip())
+
+
 def parse_uris(
     uris: list[str],
     *,
     only_ports: set[int] | None = None,
+    only_reality: bool = True,
 ) -> list[dict[str, Any]]:
-    """Parse URIs into nodes. By default only keep configs listening on port 443."""
+    """Parse URIs into nodes. Default: only port 443 + Reality configs."""
     if only_ports is None:
         only_ports = {443}
     nodes: list[dict[str, Any]] = []
-    skipped = 0
+    dropped_port = 0
+    dropped_non_reality = 0
     for uri in uris:
         node = parse_uri(uri)
         if not node:
@@ -254,13 +264,20 @@ def parse_uris(
         try:
             port = int(node.get("port") or 0)
         except (TypeError, ValueError):
-            skipped += 1
+            dropped_port += 1
             continue
         if only_ports and port not in only_ports:
-            skipped += 1
+            dropped_port += 1
+            continue
+        if only_reality and not is_reality_node(node):
+            dropped_non_reality += 1
             continue
         nodes.append(node)
-    if only_ports:
-        ports_txt = ",".join(str(p) for p in sorted(only_ports))
-        print(f"  Port filter ({ports_txt}): kept {len(nodes)}, dropped {skipped}")
+    ports_txt = ",".join(str(p) for p in sorted(only_ports)) if only_ports else "any"
+    reality_txt = "yes" if only_reality else "no"
+    print(
+        f"  Filters (port={ports_txt}, reality={reality_txt}): "
+        f"kept {len(nodes)}, dropped_port {dropped_port}, "
+        f"dropped_non_reality {dropped_non_reality}"
+    )
     return nodes
