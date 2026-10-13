@@ -33,6 +33,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "speed_timeout_s": 15,
         "max_candidates_for_speed": 10,
         "concurrency": 20,
+        # Only test/use subscription nodes on these ports (others discarded)
+        "only_ports": [443],
     },
     "observer": {
         "interval_s": 60,

@@ -20,6 +20,7 @@ testing:
   speed_timeout_s: 15
   max_candidates_for_speed: 10
   concurrency: 20
+  only_ports: [443]
 
 observer:
   interval_s: 60

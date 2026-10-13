@@ -237,10 +237,30 @@ def parse_uri(uri: str) -> dict[str, Any] | None:
     return None
 
 
-def parse_uris(uris: list[str]) -> list[dict[str, Any]]:
+def parse_uris(
+    uris: list[str],
+    *,
+    only_ports: set[int] | None = None,
+) -> list[dict[str, Any]]:
+    """Parse URIs into nodes. By default only keep configs listening on port 443."""
+    if only_ports is None:
+        only_ports = {443}
     nodes: list[dict[str, Any]] = []
+    skipped = 0
     for uri in uris:
         node = parse_uri(uri)
-        if node:
-            nodes.append(node)
+        if not node:
+            continue
+        try:
+            port = int(node.get("port") or 0)
+        except (TypeError, ValueError):
+            skipped += 1
+            continue
+        if only_ports and port not in only_ports:
+            skipped += 1
+            continue
+        nodes.append(node)
+    if only_ports:
+        ports_txt = ",".join(str(p) for p in sorted(only_ports))
+        print(f"  Port filter ({ports_txt}): kept {len(nodes)}, dropped {skipped}")
     return nodes

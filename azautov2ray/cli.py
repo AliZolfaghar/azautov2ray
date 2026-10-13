@@ -74,8 +74,9 @@ def retest_and_apply() -> None:
     print()
     print("--- Retest subscriptions ---")
     uris = fetch_all(cfg.get("subscriptions") or [])
-    nodes = parse_uris(uris)
-    print(f"  Parsed {len(nodes)} nodes")
+    only_ports = set(int(p) for p in (cfg.get("testing") or {}).get("only_ports") or [443])
+    nodes = parse_uris(uris, only_ports=only_ports)
+    print(f"  Nodes to test (port {sorted(only_ports)}): {len(nodes)}")
     ranked = run_full_pipeline(cfg, nodes, xray_bin=XRAY_BIN)
     if not ranked:
         print("  No healthy nodes found. Keeping current selection.")

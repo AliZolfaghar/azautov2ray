@@ -233,8 +233,9 @@ def run_wizard(repo_root: str, *, reinstall: bool = False) -> None:
     print()
     print("--- Fetching & testing subscription nodes ---")
     uris = fetch_all(answers["subs"])
-    nodes = parse_uris(uris)
-    print(f"  Parsed {len(nodes)} nodes")
+    only_ports = set(int(p) for p in (cfg.get("testing") or {}).get("only_ports") or [443])
+    nodes = parse_uris(uris, only_ports=only_ports)
+    print(f"  Nodes to test (port {sorted(only_ports)}): {len(nodes)}")
     ranked = run_full_pipeline(cfg, nodes, xray_bin=XRAY_BIN)
     selected = ranked[0] if ranked else None
     if not selected:
