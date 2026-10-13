@@ -57,7 +57,22 @@ def _free_port() -> int:
         return int(s.getsockname()[1])
 
 
-def _run_xray_temp(config: dict[str, Any], xray_bin: str) -> tuple[subprocess.Popen, str]:
+def _wait_port(host: str, port: int, timeout_s: float = 2.0) -> bool:
+    deadline = time.perf_counter() + timeout_s
+    while time.perf_counter() < deadline:
+        try:
+            with socket.create_connection((host, port), timeout=0.1):
+                return True
+        except OSError:
+            time.sleep(0.05)
+    return False
+
+
+def _run_xray_temp(
+    config: dict[str, Any],
+    xray_bin: str,
+    socks_port: int | None = None,
+) -> tuple[subprocess.Popen, str]:
     fd, path = tempfile.mkstemp(prefix="azauto-test-", suffix=".json")
     os.close(fd)
     write_xray_json(config, path)
@@ -66,8 +81,11 @@ def _run_xray_temp(config: dict[str, Any], xray_bin: str) -> tuple[subprocess.Po
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )
-    # Give xray a moment to bind
-    time.sleep(0.4)
+    # Wait until local SOCKS is listening (faster than fixed sleep)
+    if socks_port is not None:
+        _wait_port("127.0.0.1", socks_port, timeout_s=2.0)
+    else:
+        time.sleep(0.2)
     return proc, path
 
 
@@ -94,7 +112,7 @@ def measure_real_delay(
 ) -> float | None:
     socks_port = _free_port()
     conf = build_test_config(node, socks_port)
-    proc, conf_path = _run_xray_temp(conf, xray_bin)
+    proc, conf_path = _run_xray_temp(conf, xray_bin, socks_port=socks_port)
     try:
         proxies = {
             "http": f"socks5h://127.0.0.1:{socks_port}",
@@ -124,7 +142,7 @@ def measure_speed(
     """Return download speed in Mbps."""
     socks_port = _free_port()
     conf = build_test_config(node, socks_port)
-    proc, conf_path = _run_xray_temp(conf, xray_bin)
+    proc, conf_path = _run_xray_temp(conf, xray_bin, socks_port=socks_port)
     try:
         proxies = {
             "http": f"socks5h://127.0.0.1:{socks_port}",
@@ -154,19 +172,41 @@ def real_delay_filter(
     url: str,
     max_ms: int,
     xray_bin: str = XRAY_BIN,
+    concurrency: int = 50,
 ) -> list[dict[str, Any]]:
-    print(f"[2/3] Real delay test ({len(nodes)} nodes, max={max_ms}ms)...")
+    workers = max(1, min(int(concurrency), len(nodes) or 1))
+    print(
+        f"[2/3] Real delay test ({len(nodes)} nodes, max={max_ms}ms, "
+        f"parallel={workers})..."
+    )
     passed: list[dict[str, Any]] = []
-    for i, node in enumerate(nodes, 1):
-        name = node.get("name") or f"{node['address']}:{node['port']}"
+    done = 0
+    total = len(nodes)
+
+    def check(node: dict[str, Any]) -> dict[str, Any] | None:
         delay = measure_real_delay(node, url, max_ms, xray_bin=xray_bin)
         if delay is None:
-            print(f"  [{i}/{len(nodes)}] FAIL  {name}")
-            continue
+            return None
         out = dict(node)
         out["delay_ms"] = round(delay, 1)
-        passed.append(out)
-        print(f"  [{i}/{len(nodes)}] OK    {name}  {out['delay_ms']} ms")
+        return out
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(check, n): n for n in nodes}
+        for fut in concurrent.futures.as_completed(futures):
+            done += 1
+            node = futures[fut]
+            name = node.get("name") or f"{node['address']}:{node['port']}"
+            try:
+                result = fut.result()
+            except Exception:
+                result = None
+            if result is None:
+                print(f"  [{done}/{total}] FAIL  {name}")
+            else:
+                passed.append(result)
+                print(f"  [{done}/{total}] OK    {name}  {result['delay_ms']} ms")
+
     passed.sort(key=lambda n: n.get("delay_ms", 99999))
     print(f"  → {len(passed)} passed real-delay")
     return passed
@@ -213,6 +253,7 @@ def run_full_pipeline(cfg: dict[str, Any], nodes: list[dict[str, Any]], xray_bin
         url=t.get("real_delay_url") or "https://www.google.com/generate_204",
         max_ms=int(t.get("real_delay_max_ms", 2000)),
         xray_bin=xray_bin,
+        concurrency=int(t.get("real_delay_concurrency", 50)),
     )
     if not delayed:
         return []
