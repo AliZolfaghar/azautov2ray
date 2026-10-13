@@ -1,0 +1,31 @@
+server:
+  domain: vpn.example.com
+  public_ip: "1.2.3.4"
+  reality_port: 443
+  reality_dest: "www.microsoft.com:443"
+  reality_server_names:
+    - www.microsoft.com
+
+subscriptions:
+  - https://example.com/your-subscription
+
+testing:
+  ping_timeout_ms: 1500
+  real_delay_url: "https://www.google.com/generate_204"
+  real_delay_max_ms: 2000
+  speed_url: "https://speed.cloudflare.com/__down?bytes=10000000"
+  speed_timeout_s: 15
+  max_candidates_for_speed: 10
+  concurrency: 20
+
+observer:
+  interval_s: 60
+  fail_threshold: 3
+  rescan_on_fail: true
+
+# Filled automatically by the installer — do not invent these by hand
+generated:
+  uuid: ""
+  reality_private_key: ""
+  reality_public_key: ""
+  short_id: ""

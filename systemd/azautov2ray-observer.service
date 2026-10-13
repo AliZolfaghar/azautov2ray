@@ -1,0 +1,16 @@
+[Unit]
+Description=azautov2ray observer (health + failover)
+After=network-online.target @XRAY_UNIT@
+Wants=network-online.target
+Requires=@XRAY_UNIT@
+
+[Service]
+Type=simple
+WorkingDirectory=@OPT_DIR@
+ExecStart=@PYTHON@ -m azautov2ray.observer
+Restart=on-failure
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target
