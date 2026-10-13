@@ -8,7 +8,9 @@ server:
     - www.microsoft.com
 
 subscriptions:
-  - https://example.com/your-subscription
+  # Built-in public list (also offered during setup)
+  - https://raw.githubusercontent.com/barry-far/V2ray-config/main/All_Configs_base64_Sub.txt
+  # - https://example.com/your-subscription
 
 testing:
   ping_timeout_ms: 1500

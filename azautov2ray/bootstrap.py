@@ -137,14 +137,36 @@ def download_xray(dest_bin: str = XRAY_BIN) -> str:
     raise RuntimeError(f"Failed to download Xray-core: {last_err}")
 
 
-def create_venv(venv_dir: str = VENV_DIR, requirements_file: str | None = None) -> str:
+def _venv_deps_ok(python: Path) -> bool:
+    """Return True if required packages already import in this venv."""
+    check = subprocess.run(
+        [
+            str(python),
+            "-c",
+            "import yaml, requests, qrcode; from PIL import Image",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    return check.returncode == 0
+
+
+def create_venv(
+    venv_dir: str = VENV_DIR,
+    requirements_file: str | None = None,
+    *,
+    force_reinstall_deps: bool = False,
+) -> str:
     venv_path = Path(venv_dir)
     python = venv_path / "bin" / "python"
     if not python.is_file():
         print(f"  Creating venv at {venv_dir}")
         run([sys.executable, "-m", "venv", str(venv_path)])
+    if not force_reinstall_deps and _venv_deps_ok(python):
+        print(f"  Python deps already present in {venv_dir} — skipping pip download")
+        return str(python)
     pip = venv_path / "bin" / "pip"
-    run([str(pip), "install", "--upgrade", "pip"], check=False)
+    # Avoid upgrading pip on every run (needs network); only install missing deps
     if requirements_file and Path(requirements_file).is_file():
         run([str(pip), "install", "-r", requirements_file])
     else:
@@ -154,31 +176,37 @@ def create_venv(venv_dir: str = VENV_DIR, requirements_file: str | None = None) 
 
 def install_package_editable(repo_root: str, venv_dir: str = VENV_DIR) -> None:
     """Copy package into OPT_DIR and make it importable."""
-    src = Path(repo_root)
-    dest = Path(OPT_DIR)
+    src = Path(repo_root).resolve()
+    dest = Path(OPT_DIR).resolve()
     dest.mkdir(parents=True, exist_ok=True)
     pkg_src = src / "azautov2ray"
     pkg_dest = dest / "azautov2ray"
-    if pkg_dest.exists():
-        shutil.rmtree(pkg_dest)
-    shutil.copytree(pkg_src, pkg_dest)
-    # Also copy requirements and systemd templates if present
-    for name in ("requirements.txt",):
-        f = src / name
-        if f.is_file():
-            shutil.copy2(f, dest / name)
-    systemd_src = src / "systemd"
-    if systemd_src.is_dir():
-        systemd_dest = dest / "systemd"
-        if systemd_dest.exists():
-            shutil.rmtree(systemd_dest)
-        shutil.copytree(systemd_src, systemd_dest)
-    # Write a small sitecustomize /.pth so venv finds the package
+    if not pkg_src.is_dir():
+        raise RuntimeError(f"Package source not found: {pkg_src}")
+
+    # Reinstall from /opt itself: do not rmtree+copy onto the same path
+    if pkg_src == pkg_dest:
+        print(f"  Package already at {pkg_dest} — skipping copy")
+    else:
+        if pkg_dest.exists():
+            shutil.rmtree(pkg_dest)
+        shutil.copytree(pkg_src, pkg_dest)
+        for name in ("requirements.txt",):
+            f = src / name
+            if f.is_file():
+                shutil.copy2(f, dest / name)
+        systemd_src = src / "systemd"
+        if systemd_src.is_dir():
+            systemd_dest = dest / "systemd"
+            if systemd_dest.exists():
+                shutil.rmtree(systemd_dest)
+            shutil.copytree(systemd_src, systemd_dest)
+
     site_packages = list((Path(venv_dir) / "lib").glob("python*/site-packages"))
     if site_packages:
         pth = site_packages[0] / "azautov2ray.pth"
         pth.write_text(str(dest) + "\n", encoding="utf-8")
-    print(f"  Package installed under {dest}")
+    print(f"  Package ready under {dest}")
 
 
 def open_firewall_port(port: int) -> None:

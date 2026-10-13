@@ -11,6 +11,11 @@ import yaml
 
 from azautov2ray import CONFIG_PATH, ETC_DIR
 
+# Always offered during setup; users can disable or add more
+BUILTIN_SUBSCRIPTIONS: list[str] = [
+    "https://raw.githubusercontent.com/barry-far/V2ray-config/main/All_Configs_base64_Sub.txt",
+]
+
 DEFAULT_CONFIG: dict[str, Any] = {
     "server": {
         "domain": "",
@@ -19,7 +24,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
         "reality_dest": "www.microsoft.com:443",
         "reality_server_names": ["www.microsoft.com"],
     },
-    "subscriptions": [],
+    "subscriptions": list(BUILTIN_SUBSCRIPTIONS),
     "testing": {
         "ping_timeout_ms": 1500,
         "real_delay_url": "https://www.google.com/generate_204",

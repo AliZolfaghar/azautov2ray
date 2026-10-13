@@ -56,15 +56,19 @@ Management menu:
 3. Retest subscriptions & apply best  
 4. Edit settings  
 5. Restart services  
-6. Uninstall  
+6. Reinstall (keep downloads)  
+7. Uninstall  
+
+**Reinstall** re-runs the setup wizard without deleting `/opt` downloads: existing Xray binary and Python venv packages are reused. You can keep Reality keys (same QR) or regenerate them.
 
 After install you can also run:
 
 ```bash
-sudo azautov2ray          # management menu
+sudo azautov2ray            # management menu
 sudo azautov2ray status
 sudo azautov2ray qr
 sudo azautov2ray retest
+sudo azautov2ray reinstall
 ```
 
 ## Config
@@ -80,7 +84,9 @@ server:
   reality_server_names: ["www.microsoft.com"]
 
 subscriptions:
-  - https://example.com/sub1
+  # Predefined during setup (can add more):
+  - https://raw.githubusercontent.com/barry-far/V2ray-config/main/All_Configs_base64_Sub.txt
+  # - https://example.com/sub1
 
 testing:
   ping_timeout_ms: 1500

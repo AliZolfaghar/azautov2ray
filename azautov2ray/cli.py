@@ -10,7 +10,7 @@ from pathlib import Path
 from azautov2ray import ETC_DIR, OPT_DIR
 from azautov2ray.bootstrap import close_firewall_port, remove_cli_wrapper
 from azautov2ray.config import is_installed, load_config, save_config
-from azautov2ray.prompt import ask, pause, read_line
+from azautov2ray.prompt import ask, ask_yes_no, pause, read_line
 from azautov2ray.reality import build_vless_link, print_qr
 from azautov2ray.service import (
     restart_services,
@@ -144,6 +144,24 @@ def do_restart() -> None:
     print("  Services restarted.")
 
 
+def do_reinstall(repo_root: str) -> None:
+    print()
+    print("--- Reinstall ---")
+    print("  Re-runs setup wizard without uninstall.")
+    print("  Keeps Xray binary + Python venv if already downloaded.")
+    if not ask_yes_no("Continue with reinstall?", True):
+        print("  Cancelled.")
+        return
+    # Prefer source under OPT_DIR when menu runs from installed copy
+    root = repo_root
+    if Path(OPT_DIR, "azautov2ray").is_dir() and not Path(root, "azautov2ray").is_dir():
+        root = OPT_DIR
+    elif Path(OPT_DIR, "azautov2ray").is_dir():
+        # Refresh package from current running source if available
+        pass
+    run_wizard(root, reinstall=True)
+
+
 def do_uninstall() -> None:
     print()
     confirm = read_line("  Type UNINSTALL to remove azautov2ray completely: ").strip()
@@ -180,7 +198,8 @@ def management_menu(repo_root: str) -> None:
         print("  3) Retest subscriptions & apply best")
         print("  4) Edit settings")
         print("  5) Restart services")
-        print("  6) Uninstall")
+        print("  6) Reinstall (keep downloads)")
+        print("  7) Uninstall")
         print("  0) Exit")
         choice = read_line("  Select: ").strip()
         try:
@@ -200,6 +219,9 @@ def management_menu(repo_root: str) -> None:
                 do_restart()
                 _pause()
             elif choice == "6":
+                do_reinstall(repo_root)
+                _pause()
+            elif choice == "7":
                 do_uninstall()
                 return
             elif choice == "0":
@@ -243,6 +265,8 @@ def main(argv: list[str] | None = None) -> int:
             retest_and_apply()
         elif cmd == "restart":
             do_restart()
+        elif cmd == "reinstall":
+            do_reinstall(installed_root)
         elif cmd == "uninstall":
             do_uninstall()
         elif cmd == "menu":
