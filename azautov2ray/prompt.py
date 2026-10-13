@@ -40,13 +40,15 @@ def read_line(prompt: str = "") -> str:
     return line.rstrip("\r\n")
 
 
-def ask(prompt: str, default: str | None = None) -> str:
-    if default is not None and default != "":
-        raw = read_line(f"{prompt} [{default}]: ").strip()
+def ask(prompt: str, default: str | None = None, *, allow_empty: bool = False) -> str:
+    """Ask for a value. If default is provided (even ""), Enter keeps/accepts it."""
+    if default is not None:
+        suffix = f" [{default}]" if default != "" else " [Enter to skip]"
+        raw = read_line(f"{prompt}{suffix}: ").strip()
         return raw if raw else default
     while True:
         raw = read_line(f"{prompt}: ").strip()
-        if raw:
+        if raw or allow_empty:
             return raw
         sys.stderr.write("  Value required.\n")
 

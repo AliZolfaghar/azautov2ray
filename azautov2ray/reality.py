@@ -42,7 +42,9 @@ def generate_reality_keys(xray_bin: str) -> tuple[str, str]:
 def build_vless_link(cfg: dict[str, Any]) -> str:
     server = cfg["server"]
     gen = cfg["generated"]
-    host = server.get("domain") or server.get("public_ip")
+    host = (server.get("domain") or "").strip() or (server.get("public_ip") or "").strip()
+    if not host:
+        raise ValueError("No domain or public_ip configured for the Reality share link")
     port = int(server["reality_port"])
     uid = gen["uuid"]
     pbk = gen["reality_public_key"]

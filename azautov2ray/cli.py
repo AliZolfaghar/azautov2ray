@@ -37,7 +37,8 @@ def show_status() -> None:
     for line in service_status_lines():
         print(f"  {line}")
     server = cfg.get("server") or {}
-    print(f"  Domain: {server.get('domain')}")
+    print(f"  Domain: {server.get('domain') or '(none — using IP)'}")
+    print(f"  Public IP: {server.get('public_ip') or '(none)'}")
     print(f"  Reality port: {server.get('reality_port')}")
     selected = state.get("selected") or {}
     print(f"  Status: {state.get('status')}")

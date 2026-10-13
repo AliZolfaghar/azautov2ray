@@ -26,7 +26,7 @@ sudo bash install.sh
 
 The script detects that nothing is installed and asks:
 
-- Domain (DNS A record → this VPS)
+- Domain (optional — if empty, public IP is used in the client link)
 - Public IP (auto-detected, confirm)
 - Reality port (default `443`)
 - Reality dest / SNI (default `www.microsoft.com:443`)
@@ -115,7 +115,7 @@ Your phone/PC always connect to **this VPS** via Reality. Only the upstream node
 
 ## Requirements
 
-- Linux VPS with public IP + domain
+- Linux VPS with public IP (domain optional)
 - Root (`sudo`)
 - Outbound internet (to fetch subscriptions and download Xray)
 

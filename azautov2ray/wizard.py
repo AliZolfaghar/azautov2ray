@@ -62,9 +62,16 @@ def run_wizard(repo_root: str) -> None:
     print("=" * 60)
     print()
 
-    domain = ask("Domain (pointed to this VPS)")
+    print("  Domain is optional. If empty, the public IP is used in the client link.")
+    domain = ask("Domain (optional)", default="")
     detected_ip = detect_public_ip()
     public_ip = ask("Public IP", detected_ip or "")
+    if not public_ip and not domain:
+        print("  Need at least a public IP (or a domain). Aborting.")
+        return
+    if not public_ip and domain:
+        # domain-only is fine for the share link; still store empty IP
+        pass
     reality_port = ask_int("Reality listen port", 443)
     dest = ask("Reality dest (host:port)", "www.microsoft.com:443")
     sni = dest.split(":")[0]

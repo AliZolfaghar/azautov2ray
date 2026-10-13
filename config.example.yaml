@@ -1,5 +1,6 @@
 server:
-  domain: vpn.example.com
+  # Optional. Leave empty to use public_ip in the VLESS/QR link.
+  domain: ""
   public_ip: "1.2.3.4"
   reality_port: 443
   reality_dest: "www.microsoft.com:443"
